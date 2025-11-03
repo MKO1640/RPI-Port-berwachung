@@ -6,6 +6,7 @@ import requests
 from config import EMAIL_CONFIG, PIN_CONFIG, THINGSPEAK_CONFIG
 import logging
 from threading import Thread
+from threading import Lock
 from flask import Flask, render_template, jsonify
 from datetime import datetime
 from collections import defaultdict
@@ -16,6 +17,12 @@ app = Flask(__name__)
 # Globale Variablen für Pin-Status und letzte Änderungen
 pin_states = {}
 last_changes = defaultdict(str)
+
+# Lock für thread-sicheren Zugriff auf pin_states/last_changes
+pin_lock = Lock()
+
+# Pins, für die Event-Detection nicht möglich war und deshalb polled werden
+polling_pins = set()
 
 # Logging-Konfiguration
 logging.basicConfig(
@@ -54,12 +61,13 @@ def pin_changed(pin):
     """Callback-Funktion für Pin-Änderungen"""
     pin_state = GPIO.input(pin)
     pin_config = PIN_CONFIG[pin]
-    # Status und Zeitstempel aktualisieren
-    pin_states[pin] = pin_state
-    last_changes[pin] = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-    
+    # Status und Zeitstempel aktualisieren (thread-sicher)
+    with pin_lock:
+        pin_states[pin] = pin_state
+        last_changes[pin] = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+
     logging.info(f"Statusänderung an Pin {pin} ({pin_config['name']}): {pin_state}")
-    
+
     # E-Mail nur senden, wenn für diesen Pin aktiviert
     if pin_config.get('send_email', True):
         message = f"{pin_config['message']} Neuer Status: {'HIGH' if pin_state else 'LOW'}"
@@ -69,12 +77,17 @@ def update_thingspeak():
     """Aktualisiert ThingSpeak mit dem aktuellen Pin-Status"""
     while True:
         try:
-            # Sammle den Status aller Pins
-            pin_states = {pin: GPIO.input(pin) for pin in PIN_CONFIG.keys()}
+            # Sammle den Status aller Pins (lokal, ohne globales Überschreiben)
+            pin_values = {pin: GPIO.input(pin) for pin in PIN_CONFIG.keys()}
             
+            # Option: Aktualisiere globalen Status (thread-sicher)
+            with pin_lock:
+                for pin, v in pin_values.items():
+                    pin_states[pin] = v
+
             # Bereite die Daten für ThingSpeak vor
             data = {f'field{i+1}': int(state) 
-                   for i, (_, state) in enumerate(pin_states.items())}
+                   for i, (_, state) in enumerate(pin_values.items())}
             data['api_key'] = THINGSPEAK_CONFIG['api_key']
             
             # Sende Daten an ThingSpeak
@@ -129,15 +142,47 @@ def start_flask():
     """Flask-Server starten"""
     app.run(host='0.0.0.0', port=8080)
 
+
+def poll_pins(interval=0.5):
+    """Pollt Pins, für die kein Edge-Detection verfügbar war."""
+    logging.info(f"Polling-Thread gestartet für Pins: {sorted(polling_pins)}")
+    while True:
+        try:
+            with pin_lock:
+                # Erzeuge eine Kopie der aktuellen polling_pins
+                pins_to_check = list(polling_pins)
+            # Prüfe außerhalb der Sperre
+            for pin in pins_to_check:
+                current = GPIO.input(pin)
+                with pin_lock:
+                    prev = pin_states.get(pin)
+                if prev is None:
+                    with pin_lock:
+                        pin_states[pin] = current
+                    continue
+                if current != prev:
+                    try:
+                        pin_changed(pin)
+                    except Exception as e:
+                        logging.error(f"Fehler im Polling handler für Pin {pin}: {e}")
+        except Exception as e:
+            logging.error(f"Polling-Thread Fehler: {e}")
+        time.sleep(interval)
+
 def main():
     """Hauptprogramm"""
     try:
         setup_gpio()
         logging.info("GPIO-Überwachung gestartet")
 
-        # Event Detection für jeden Pin einrichten
+        # Event Detection für jeden Pin einrichten (mit Fallback auf Polling)
         for pin in PIN_CONFIG.keys():
-            GPIO.add_event_detect(pin, GPIO.BOTH, callback=pin_changed, bouncetime=300)
+            try:
+                GPIO.add_event_detect(pin, GPIO.BOTH, callback=pin_changed, bouncetime=300)
+            except Exception as e:
+                # Edge detection konnte nicht hinzugefügt werden -> Polling als Fallback
+                logging.error(f"Failed to add edge detection for pin {pin}: {e}")
+                polling_pins.add(pin)
 
         # Starte ThingSpeak Update Thread
         thingspeak_thread = Thread(target=update_thingspeak, daemon=True)
@@ -148,6 +193,12 @@ def main():
         flask_thread = Thread(target=start_flask, daemon=True)
         flask_thread.start()
         logging.info("Webserver gestartet auf http://0.0.0.0:8080")
+
+        # Starte Polling-Thread, falls nötig
+        if polling_pins:
+            poll_thread = Thread(target=poll_pins, daemon=True)
+            poll_thread.start()
+            logging.info(f"Polling-Thread gestartet für Pins: {sorted(polling_pins)}")
 
         # Programm am Laufen halten
         while True:
