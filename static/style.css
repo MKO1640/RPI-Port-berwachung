@@ -1,0 +1,95 @@
+/* Grundlegende Stile */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+/* Pin-Grid Layout */
+.pin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* Pin-Karten Design */
+.pin-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.pin-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.pin-card h2 {
+    margin: 0 0 15px 0;
+    color: #444;
+}
+
+/* Status-Indikator */
+.status-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #ccc;
+    margin: 10px 0;
+}
+
+.pin-card.active .status-indicator {
+    background-color: #4CAF50;
+    box-shadow: 0 0 10px #4CAF50;
+}
+
+/* Text-Stile */
+.status-text {
+    font-weight: bold;
+}
+
+.last-change {
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* Chart Container */
+.charts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* ThingSpeak Einbettung */
+.thingspeak-embed {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 30px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .pin-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts {
+        grid-template-columns: 1fr;
+    }
+}

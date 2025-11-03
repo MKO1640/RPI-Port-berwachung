@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPIO Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        {% for status, color in config.WEB_CONFIG.pin_colors.items() %}
+        .pin-card.{{ status }} .status-indicator {
+            background-color: {{ color }};
+            box-shadow: 0 0 10px {{ color }};
+        }
+        {% endfor %}
+    </style>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>GPIO Monitor</h1>
+        
+        <div class="pin-grid">
+            {% for pin, info in pins.items() %}
+            <div class="pin-card {% if pin_states[pin] %}active{% endif %}">
+                <h2>{{ info.name }}</h2>
+                <div class="status-indicator"></div>
+                <p>Status: <span class="status-text">{{ 'Aktiv' if pin_states[pin] else 'Inaktiv' }}</span></p>
+                <p>Letzter Wechsel: <span class="last-change">{{ last_changes[pin]|default('Keine Änderung') }}</span></p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="charts">
+            <div id="historyChart"></div>
+            <div id="activityChart"></div>
+        </div>
+
+        <div class="thingspeak-embed">
+            <h2>ThingSpeak Visualisierung</h2>
+            <iframe width="450" height="260" style="border: 1px solid #cccccc;" 
+                src="https://thingspeak.com/channels/{{ config.THINGSPEAK_CONFIG.channel_id }}/charts/1">
+            </iframe>
+        </div>
+    </div>
+
+    <script>
+        // Automatische Aktualisierung
+        function updatePinStates() {
+            fetch('/api/pin-states')
+                .then(response => response.json())
+                .then(data => {
+                    Object.entries(data.pin_states).forEach(([pin, state]) => {
+                            const card = document.querySelector(`#pin-${pin}`);
+                        if (card) {
+                                // Entferne alle Status-Klassen
+                                card.classList.remove('active', 'warning', 'error', 'inactive');
+                                // Füge neue Status-Klasse hinzu
+                                card.classList.add(data.pin_colors[pin]);
+                            card.querySelector('.status-text').textContent = state ? 'Aktiv' : 'Inaktiv';
+                            if (data.last_changes[pin]) {
+                                card.querySelector('.last-change').textContent = data.last_changes[pin];
+                            }
+                        }
+                    });
+                });
+        }
+
+        // Aktualisiere alle 5 Sekunden
+            setInterval(updatePinStates, {{ config.WEB_CONFIG.update_interval * 1000 }});
+
+        // Initialer Aufruf
+        updatePinStates();
+    </script>
+</body>
+</html>
