@@ -39,9 +39,31 @@ In `config.py` unter `EMAIL_CONFIG`:
 EMAIL_CONFIG = {
     'smtp_server': 'smtp.example.com',
     'smtp_port': 587,
+    'use_tls': True,    # True für STARTTLS (Port 587)
+    'use_ssl': False,   # True für SSL (Port 465)
     'sender_email': 'ihre@email.com',
     'password': 'ihr_passwort',
     'recipient_email': 'empfaenger@email.com'
+}
+```
+
+Hinweis für Gmail:
+- Verwenden Sie `smtp.gmail.com` als `smtp_server`.
+- Für STARTTLS (empfohlen) setzen Sie `smtp_port` auf `587` und `use_tls=True`.
+- Für SSL setzen Sie `smtp_port` auf `465` und `use_ssl=True`.
+- Google blockiert häufig direkte SMTP-Zugriffe; wenn Sie 2‑Faktor‑Authentifizierung (2FA) verwenden, erstellen Sie ein "App-Passwort" in Ihrem Google-Konto und verwenden dieses hier als `password`.
+- Wenn Sie kein App-Passwort haben, kann der Login fehlschlagen (Google hat die Option für "weniger sichere Apps" abgeschafft). Siehe: https://support.google.com/accounts/answer/185833
+
+Beispiel für Gmail mit STARTTLS:
+```python
+EMAIL_CONFIG = {
+    'smtp_server': 'smtp.gmail.com',
+    'smtp_port': 587,
+    'use_tls': True,
+    'use_ssl': False,
+    'sender_email': 'me@gmail.com',
+    'password': 'APP_PASSWORD',
+    'recipient_email': 'you@example.com'
 }
 ```
 

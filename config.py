@@ -13,9 +13,11 @@ WEB_CONFIG = {
 # E-Mail Konfiguration
 EMAIL_CONFIG = {
     'smtp_server': 'smtp.example.com',  # SMTP Server
-    'smtp_port': 587,                   # SMTP Port
+    'smtp_port': 587,                   # SMTP Port (587 for STARTTLS, 465 for SSL)
+    'use_tls': True,                    # Wenn True, benutzt STARTTLS (port 587)
+    'use_ssl': False,                   # Wenn True, benutzt smtplib.SMTP_SSL (port 465)
     'sender_email': 'your@email.com',   # Absender E-Mail
-    'password': 'your_password',        # E-Mail Passwort
+    'password': 'your_password',        # E-Mail Passwort oder App-Passwort
     'recipient_email': 'recipient@email.com'  # Empfänger E-Mail
 }
 

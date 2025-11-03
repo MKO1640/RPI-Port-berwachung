@@ -46,12 +46,25 @@ def send_email(subject, message):
         msg['Subject'] = subject
         msg['From'] = EMAIL_CONFIG['sender_email']
         msg['To'] = EMAIL_CONFIG['recipient_email']
+        # SMTP-Verbindung aufbauen (unterstützt SSL oder STARTTLS je nach config)
+        smtp_server = EMAIL_CONFIG.get('smtp_server')
+        smtp_port = EMAIL_CONFIG.get('smtp_port')
+        use_ssl = EMAIL_CONFIG.get('use_ssl', False)
+        use_tls = EMAIL_CONFIG.get('use_tls', True)
 
-        # SMTP-Verbindung aufbauen
-        with smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port']) as server:
-            server.starttls()
-            server.login(EMAIL_CONFIG['sender_email'], EMAIL_CONFIG['password'])
-            server.send_message(msg)
+        if use_ssl:
+            logging.info('Verwende SMTP_SSL für E-Mail-Versand')
+            with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+                server.login(EMAIL_CONFIG['sender_email'], EMAIL_CONFIG['password'])
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.ehlo()
+                if use_tls:
+                    server.starttls()
+                    server.ehlo()
+                server.login(EMAIL_CONFIG['sender_email'], EMAIL_CONFIG['password'])
+                server.send_message(msg)
         
         logging.info(f"E-Mail versendet: {subject}")
     except Exception as e:
