@@ -3,6 +3,7 @@ import smtplib
 from email.mime.text import MIMEText
 import time
 import requests
+import config
 from config import EMAIL_CONFIG, PIN_CONFIG, THINGSPEAK_CONFIG
 import logging
 from threading import Thread
@@ -134,7 +135,7 @@ def index():
                          pin_states=pin_states,
                          pin_colors=pin_colors,
                          last_changes=last_changes,
-                         config=globals())
+                         config=config)
 
 @app.route('/api/pin-states')
 def get_pin_states():

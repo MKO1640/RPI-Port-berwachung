@@ -21,7 +21,7 @@
         
         <div class="pin-grid">
             {% for pin, info in pins.items() %}
-            <div class="pin-card {% if pin_states[pin] %}active{% endif %}">
+            <div id="pin-{{ pin }}" class="pin-card {{ pin_colors[pin] }}">
                 <h2>{{ info.name }}</h2>
                 <div class="status-indicator"></div>
                 <p>Status: <span class="status-text">{{ 'Aktiv' if pin_states[pin] else 'Inaktiv' }}</span></p>
