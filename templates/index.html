@@ -13,7 +13,6 @@
         }
         {% endfor %}
     </style>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -33,13 +32,6 @@
         <div class="charts">
             <div id="historyChart"></div>
             <div id="activityChart"></div>
-        </div>
-
-        <div class="thingspeak-embed">
-            <h2>ThingSpeak Visualisierung</h2>
-            <iframe width="450" height="260" style="border: 1px solid #cccccc;" 
-                src="https://thingspeak.com/channels/{{ config.THINGSPEAK_CONFIG.channel_id }}/charts/1">
-            </iframe>
         </div>
 
         <div class="control-panel">
