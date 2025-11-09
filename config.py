@@ -111,3 +111,21 @@ PIN_CONFIG = {
         }
     }
 }
+
+# Steuerbare Ausgänge (über Webinterface schaltbar)
+# Tragen Sie hier die Pins ein, die Sie per Web einschalten möchten.
+# Beispiel: drei Relais an GPIO 5, 6 und 13
+CONTROL_PINS = {
+    5: {
+        'name': 'Relais 1',
+        'initial': False
+    },
+    6: {
+        'name': 'Relais 2',
+        'initial': False
+    },
+    13: {
+        'name': 'Relais 3',
+        'initial': False
+    }
+}

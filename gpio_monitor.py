@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 import time
 import requests
 import config
-from config import EMAIL_CONFIG, PIN_CONFIG, THINGSPEAK_CONFIG
+from config import EMAIL_CONFIG, PIN_CONFIG, THINGSPEAK_CONFIG, CONTROL_PINS
 import logging
 from threading import Thread
 from threading import Lock
@@ -18,6 +18,8 @@ app = Flask(__name__)
 # Globale Variablen für Pin-Status und letzte Änderungen
 pin_states = {}
 last_changes = defaultdict(str)
+# Steuerbare Ausgänge Status
+control_states = {}
 
 # Lock für thread-sicheren Zugriff auf pin_states/last_changes
 pin_lock = Lock()
@@ -39,6 +41,16 @@ def setup_gpio():
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         pin_states[pin] = GPIO.input(pin)  # Initialen Status speichern
         logging.info(f"Pin {pin} ({PIN_CONFIG[pin]['name']}) initialisiert")
+    # Setup für steuerbare Ausgänge
+    for pin, info in CONTROL_PINS.items():
+        try:
+            GPIO.setup(pin, GPIO.OUT)
+            initial = bool(info.get('initial', False))
+            GPIO.output(pin, initial)
+            control_states[pin] = initial
+            logging.info(f"Control-Pin {pin} ({info.get('name')}) als OUTPUT initialisiert (state={initial})")
+        except Exception as e:
+            logging.error(f"Fehler beim Initialisieren von Control-Pin {pin}: {e}")
 
 def send_email(subject, message):
     """E-Mail versenden"""
@@ -150,7 +162,36 @@ def get_pin_states():
         'pin_states': pin_states,
         'last_changes': last_changes,
         'pin_colors': pin_colors
+        , 'control_states': control_states
     })
+
+
+@app.route('/api/control', methods=['POST'])
+def control_pin():
+    """Setzt einen steuerbaren Pin auf 0/1 via JSON payload {"pin": 5, "state": 1} """
+    try:
+        data = None
+        # Flask's request isn't imported at module top to avoid circular imports in tests; import locally
+        from flask import request
+        data = request.get_json(force=True)
+        pin = int(data.get('pin'))
+        state = bool(int(data.get('state')))
+    except Exception as e:
+        logging.error(f"Ungültige Steuer-Anfrage: {e}")
+        return jsonify({'ok': False, 'error': 'invalid payload'}), 400
+
+    if pin not in CONTROL_PINS:
+        return jsonify({'ok': False, 'error': 'pin not controllable'}), 400
+
+    try:
+        GPIO.output(pin, state)
+        with pin_lock:
+            control_states[pin] = state
+        logging.info(f"Control-Pin {pin} gesetzt auf {int(state)}")
+        return jsonify({'ok': True, 'pin': pin, 'state': int(state)})
+    except Exception as e:
+        logging.error(f"Fehler beim Setzen von Pin {pin}: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 def start_flask():
     """Flask-Server starten"""

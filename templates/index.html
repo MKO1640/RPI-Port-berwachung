@@ -41,6 +41,20 @@
                 src="https://thingspeak.com/channels/{{ config.THINGSPEAK_CONFIG.channel_id }}/charts/1">
             </iframe>
         </div>
+
+        <div class="control-panel">
+            <h2>Steuerbare Ausgänge</h2>
+            <div class="pin-grid">
+                {% for pin, info in config.CONTROL_PINS.items() %}
+                <div id="control-{{ pin }}" class="pin-card control-card">
+                    <h2>{{ info.name }}</h2>
+                    <p>GPIO {{ pin }}</p>
+                    <p>Status: <span class="control-status">-</span></p>
+                    <button class="control-btn" data-pin="{{ pin }}">Toggle</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
     <script>
@@ -62,14 +76,62 @@
                             }
                         }
                     });
+                    // Update control states (if present)
+                    if (data.control_states) {
+                        Object.entries(data.control_states).forEach(([pin, state]) => {
+                            const controlCard = document.querySelector(`#control-${pin}`);
+                            if (controlCard) {
+                                const statusEl = controlCard.querySelector('.control-status');
+                                const btn = controlCard.querySelector('.control-btn');
+                                statusEl.textContent = state ? 'An' : 'Aus';
+                                btn.textContent = state ? 'Aus' : 'An';
+                                btn.dataset.state = state ? '1' : '0';
+                            }
+                        });
+                    }
                 });
         }
 
-        // Aktualisiere alle 5 Sekunden
-            setInterval(updatePinStates, {{ config.WEB_CONFIG.update_interval * 1000 }});
+        // Aktualisiere alle X Sekunden (konfiguriert)
+        var updateIntervalMs = {{ config.WEB_CONFIG.update_interval }} * 1000;
+        setInterval(updatePinStates, updateIntervalMs);
 
         // Initialer Aufruf
         updatePinStates();
+
+        // Setup control button handlers
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.matches('.control-btn')) {
+                const btn = e.target;
+                const pin = btn.dataset.pin;
+                // toggle desired state
+                const desired = btn.dataset.state === '1' ? '0' : '1';
+                fetch('/api/control', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ pin: pin, state: desired })
+                }).then(r => r.json()).then(resp => {
+                    if (resp.ok) {
+                        // update UI immediately
+                        const controlCard = document.querySelector(`#control-${pin}`);
+                        if (controlCard) {
+                            const statusEl = controlCard.querySelector('.control-status');
+                            const btn = controlCard.querySelector('.control-btn');
+                            const newState = resp.state === 1 ? true : false;
+                            statusEl.textContent = newState ? 'An' : 'Aus';
+                            btn.textContent = newState ? 'Aus' : 'An';
+                            btn.dataset.state = newState ? '1' : '0';
+                        }
+                    } else {
+                        alert('Fehler beim Schalten: ' + (resp.error || 'unknown'));
+                    }
+                }).catch(err => {
+                    alert('Netzwerk-/Serverfehler beim Schalten');
+                });
+            }
+        });
     </script>
 </body>
 </html>
