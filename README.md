@@ -88,7 +88,8 @@ Jeder Pin kann individuell konfiguriert werden:
 
 ## Verwendung
 
-Programm starten:
+### Manueller Start
+
 ```bash
 python gpio_monitor.py
 ```
@@ -96,6 +97,34 @@ python gpio_monitor.py
 Zugriff auf das Web-Interface:
 - Lokal: `http://localhost:8080`
 - Netzwerk: `http://<raspberry-ip>:8080`
+
+### Installation als System Service
+
+Für automatischen Start beim Booten:
+
+```bash
+# Erstelle Installationsverzeichnis
+sudo mkdir -p /opt/gpio-monitor
+
+# Kopiere Projektdateien
+sudo cp -r * /opt/gpio-monitor/
+
+# Installiere Service
+sudo cp gpio-monitor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable gpio-monitor
+sudo systemctl start gpio-monitor
+```
+
+Service Status prüfen:
+```bash
+sudo systemctl status gpio-monitor
+```
+
+Log anzeigen:
+```bash
+sudo journalctl -u gpio-monitor -f
+```
 
 ## Pin-Status Farben
 
