@@ -27,11 +27,12 @@ pin_lock = Lock()
 # Pins, für die Event-Detection nicht möglich war und deshalb polled werden
 polling_pins = set()
 
-# Logging-Konfiguration
+# Logging-Konfiguration für systemd journal
+from systemd import journal
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='gpio_monitor.log'
+    format='%(levelname)s - %(message)s',
+    handlers=[journal.JournalHandler()]
 )
 
 def setup_gpio():
